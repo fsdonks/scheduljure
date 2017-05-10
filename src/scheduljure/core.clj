@@ -248,7 +248,7 @@ generate an input text file where each user can select their unavailability."
 (str "FS,
 
 Here is an updated security check roster.  I'm only providing this electronic copy
-in e-mail.
+in e-mail.  Make note of who has checks the week after you as well.
 
 Please keep in mind that
 
