@@ -1,15 +1,13 @@
+;;Purpose of the script is to generate the security check roster for FS.
+;;Right now, input file dependencies are names.txt (just a vector
+;;of strings in a text file) for a stack of names
+;;for the roster and weeks.txt (just a vector of strings in a txt file)
+;;for the weeks included in the roster.
+;;roster-from will also prep the input files for the next roster
 (ns scheduljure.core
   (:require [clj-time [core :as t] [format :as f] [periodic :as p]]
             [clojure.string :as str]
             [clojure.java.io :as io]))
-
-"Purpose of the script is to generate the security check roster for FS.
-Right now, input file dependencies are names.txt (just a vector
-of strings in a text file) for a stack of names
-for the roster and weeks.txt (just a vector of strings in a txt file)
-for the weeks included in the roster.
-roster-from will also prep the input files for the next roster"
-
 
 ;;todo 1: function to make a new roster from scratch without depending
 ;;on inputs from last roster.  I think these inputs would be: names.txt, which week to start
@@ -33,16 +31,19 @@ roster-from will also prep the input files for the next roster"
 
 (defn spit-roster [vecs newdir]
   (spit (str newdir "\\roster.txt")
-   (reduce (fn [curr [date name]] (str curr date " " name "\r\n")) "" vecs)))
+        (reduce (fn [curr [date name]]
+                  (str curr date " " name "\r\n")) ""
+                vecs)))
 
 (defn get-first
-"Return the first item of xs where f(x) is True.  If xs is empty, return nil."
+  "Return the first item of xs where f(x) is True.  If xs is empty,
+   return nil."
   [f xs]
   (first (filter f xs)))
 
 (defn pop-out
-  "Find the first itm in xs where f is true. Return a vector where first item
-is itm and second item is xs without itm."
+  "Find the first itm in xs where f is true. Return a vector where
+   first item is itm and second item is xs without itm."
   [f xs]
   (if-let [itm (get-first f xs)]
     [itm (remove (fn [i] (= i itm)) xs)]
@@ -77,8 +78,8 @@ is itm and second item is xs without itm."
 (def ^:dynamic numonths 3)
 
 (defn new-weeks
-"Given a start date, returns a sequence of dates every
- seven days for numonths."
+  "Given a start date, returns a sequence of dates every seven days
+   for numonths."
   [jstartdate]
   (let [
         firstmonth  (t/plus jstartdate (t/weeks 1))
@@ -116,8 +117,8 @@ map of start days to sets of unavailable names for each week. "
        (recur (vec-conj newpool nxt) (rest wks) (conj roster nxt))))))
 
 (defn input-intro
-"Given a first name string, generate a header and instructions for the input
-  file"
+  "Given a first name string, generate a header and instructions for
+   the input file"
   [firstname]
  (str/replace (str "Hello " firstname ",
 
@@ -149,12 +150,14 @@ excluding federal holidays) or go home for the day before 1400.
    (first (str/split name #" ")))
 
 (defn make-inputs
-"Given a vector of fullnames for the roster and a vector of string weeks in myformat,
-generate an input text file where each user can select their unavailability."
+ "Given a vector of fullnames for the roster and a vector of string
+  weeks in myformat, generate an input text file where each user can
+  select their unavailability."
   [names weeks root]
   (doseq [n names]
     (spit (str root "\\" (str/replace n " " "") ".txt")
-     (reduce (fn [curr wk] (str curr "\r\n[] " wk)) (input-intro  (fullname->first n)) weeks))))
+          (reduce (fn [curr wk] (str curr "\r\n[] " wk))
+                  (input-intro  (fullname->first n)) weeks))))
 
 (defn get-last-week [oldpath]
   (-> (slurp (str oldpath "\\roster.txt"))
@@ -281,9 +284,10 @@ The schedule follows below:\r\n\r\n"
                (get-unavailability path)))
 
 (defn roster-from
-"Make a new roster from the inputs (names.txt, weeks.txt, and unavailability files) in path.
-Final roster goes in a file named roster.txt.  The names and weeks for the next roster
-are also generated."
+ "Make a new roster from the inputs (names.txt, weeks.txt, and
+  unavailability files) in path.  Final roster goes in a file named
+  roster.txt.  The names and weeks for the next roster are also
+  generated."
   [path]
   (let [[pool newweeks roster] (make-roster (read-file (str path "names.txt"))
                                             (read-file (str path "weeks.txt"))
