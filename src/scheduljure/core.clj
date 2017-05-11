@@ -105,11 +105,11 @@ map of start days to sets of unavailable names for each week. "
          wks weeks
          roster []]
     (if (empty? wks)
-      [pool  (new-weeks-from (last weeks)) roster]
+      [pool  (new-weeks-from (last weeks)) (map #(-> [%1 %2]) weeks roster) roster]
       (let [wk (first wks)
             pout (fn [name] (available? name unavailables wk))
             [nxt newpool] (pop-out pout pool)]
-       (recur (vec-conj newpool nxt) (rest wks) (conj roster [wk nxt]))))))
+       (recur (vec-conj newpool nxt) (rest wks) (conj roster nxt))))))
 
 (defn input-intro
 "Given a first name string, generate a header and instructions for the input
@@ -245,25 +245,30 @@ generate an input text file where each user can select their unavailability."
 "generate the text for the e-mail and put the results in email.txt"
   [path]
 
-(str "FS,
+(str "FS,\r\n
 
-Here is an updated security check roster.  I'm only providing this electronic copy
-in e-mail.  Make note of who has checks the week after you as well.
+Here is an updated security check roster.  I'm only providing this electronic copy\r\n
+in e-mail.  Make note of who has checks the week after you as well.\r\n
+\r\n
+Please keep in mind that\r\n
+\r\n
+1.  Security check will be performed in accordance with Army Regulation 380-5.\r\n  
+Department of the Army Information Security Program, section 6-11, requires all\r\n 
+\"… Commands that access, process, or store classified information will establish\r\n 
+a system of security checks at the close of each working day to ensure that all\r\n 
+classified material is properly secured.  Standard Form 701 (Activity Security\r\n 
+Checklist), will be used to record these checks...\".\r\n					
+\r\n
+2.  If you need to make adjustments due to your personal schedule, it is your responsibility.\r\n					
+\r\n\r\n
+The schedule follows below:\r\n\r\n"
 
-Please keep in mind that
+(slurp (str path "roster.txt"))))
 
-1.   Security check will be performed in accordance with Army Regulation 380-5.  
-Department of the Army Information Security Program, section 6-11, requires all 
-\"… Commands that access, process, or store classified information will establish 
-a system of security checks at the close of each working day to ensure that all 
-classified material is properly secured.  Standard Form 701 (Activity Security 
-Checklist), will be used to record these checks...\".					
-					
-2.   If you need to make adjustments due to your personal schedule, it is your responsibility.					
-					
-3.   The schedule follows below:\r\n\r\n"
-
-(read-file (str path "roster.txt"))))
+(defn input->roster [path]
+  (make-roster (read-file (str path "names.txt"))
+               (read-file (str path "weeks.txt"))
+               (get-unavailability path)))
 
 (defn roster-from
 "Make a new roster from the inputs (names.txt, weeks.txt, and unavailability files) in path.
@@ -278,5 +283,5 @@ are also generated."
     (do (spit (str newpath "\\names.txt") (str pool))
         (spit (str newpath "\\weeks.txt") (str newweeks))
         (spit-roster roster path)
-        (roster-email path)
+        (spit (str path "email.txt") (roster-email path))
         (make-new-inputs newpath path))))

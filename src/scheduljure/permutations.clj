@@ -1,8 +1,11 @@
-(require '[clojure.math.combinatorics :as c])
+(ns scheduljure.permutations (:require [clojure.math.combinatorics :as c]))
 
 (def checkers ["Rick" "Tom" "Craig" "Shawnette" "Heather" "Greg"])
 
-(def checker-ids (range 1 (inc (count checkers))))
+(defn make-ids [checkers]
+  (range 1 (inc (count checkers))))
+
+(def checker-ids (make-ids checkers))
 
 (def navail [[4 5]   ;<-- checkers 4 and 5 aren't available on week 1
              [1 5]   ;<-- checkers 1 and 5 aren't available on week 2
