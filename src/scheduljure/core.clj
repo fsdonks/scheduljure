@@ -4,14 +4,18 @@
             [clojure.java.io :as io]))
 
 "Purpose of the script is to generate the security check roster for FS.
-Right now, input file dependencies are names.txt for a stack of names
-for the roster and weeks.txt for the weeks included in the roster.
+Right now, input file dependencies are names.txt (just a vector
+of strings in a text file) for a stack of names
+for the roster and weeks.txt (just a vector of strings in a txt file)
+for the weeks included in the roster.
 roster-from will also prep the input files for the next roster"
 
-;;todo: function to make a new roster from scratch without depending
+
+;;todo 1: function to make a new roster from scratch without depending
 ;;on inputs from last roster.  I think these inputs would be: names.txt, which week to start
 ;;(make sure it's a Monday)-generates weeks.txt first, call make-inputs for input files,
 ;;
+;;todo 2: make uberjar file for non-Clojurfied user
 
 ;1) Vector of names ["Rick" "Tom" "Craig"]
 ;2) Map of unavailable days {"04/19/17" #{"Rick"} "04/26/17" #{"Rick" "Craig"}}
@@ -23,7 +27,7 @@ roster-from will also prep the input files for the next roster"
 ;3) Roster [["04/12/17" "Rick"] ["04/19/17" "Tom"] ["04/26/17" "Tom"]]
                                    
 
-(def names ["Rick Hanson" "Tom Spoon" "Craig Flewelling"])
+(def names ["Rick" "Tom" "Craig"])
 (def unavailables {"04-10-2017" #{"Rick"} "04-17-2017" #{"Rick" "Craig"}})
 (def weeks ["04-03-2017" "04-10-2017" "04-17-2017" "04-24-2017"])
 
@@ -132,8 +136,8 @@ but available for security checks during the week of 05/08/2017:
 ----------------End Example
 
 Unavailable means that you expect to have at least two days during the
-week where you will either be out for the day (including CWS days) or 
-go home for the day before 1400.
+week where you will either be out for the day (including CWS days but
+excluding federal holidays) or go home for the day before 1400.
 
  
 ") #"\n" "\r\n")
@@ -184,18 +188,23 @@ generate an input text file where each user can select their unavailability."
 
 (defn parse-availability [availstr]
   (let [date (last (str/split availstr #" "))
-        ;;return the stuff between brackets
+        ;;return the stuff between brackets. internet pull.
         v  (re-find (re-matcher #"(?<=\[)[^]]+(?=\])" availstr))
         ;;remove any spaces
         v (if v (str/trim v) v)] 
     [(case v "X" true "x" true false) date])) ;true if unavailable
 
+(def ^:dynamic *last-text* #"1400.\r\n\r\n \r\n\r\n")
+
 (defn available-booleans [path fullname]
   (when (.exists (io/file path))
     (map parse-availability (-> (slurp path)
-                                (str/replace (input-intro (fullname->first fullname)) "")
+                                ;(str/replace (input-intro (fullname->first fullname)) "")
+                                (str/split *last-text*)
+                                (second)
                                 (str/split #"\r\n")
-                                (rest)))))
+                                ;(rest)
+                                ))))
 
 (defn assoc-conj [m k v empty-coll]
   (if-let [valu (m k)]
@@ -247,8 +256,9 @@ generate an input text file where each user can select their unavailability."
 
 (str "FS,\r\n
 
-Here is an updated security check roster.  I'm only providing this electronic copy\r\n
-in e-mail.  Make note of who has checks the week after you as well.\r\n
+Here is an updated security check roster.  I'm providing this electronic copy\r\n
+and adding the roster to the FS calendar.  Make note of who has checks the week\r\n
+after you as well.\r\n
 \r\n
 Please keep in mind that\r\n
 \r\n

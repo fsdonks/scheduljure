@@ -1,5 +1,8 @@
 (ns scheduljure.permutations (:require [clojure.math.combinatorics :as c]))
 
+                                        ;this was Rick's attempt at computing all possible roster permutations.
+                                        ;Problem is that sometimes a person will pull checks more than once in the same roster.
+
 (def checkers ["Rick" "Tom" "Craig" "Shawnette" "Heather" "Greg"])
 
 (defn make-ids [checkers]
