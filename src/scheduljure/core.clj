@@ -95,7 +95,7 @@ is itm and second item is xs without itm."
   (new-weeks  (t/plus  (mydate->jdate mydate) (t/weeks 1))))
 
 (defn vec-conj
-  "Conj onto a the end of a sequence."
+  "Conj onto the end of a sequence."
    [seq x]
   (conj (vec seq) x))
 
@@ -112,8 +112,11 @@ map of start days to sets of unavailable names for each week. "
       [pool  (new-weeks-from (last weeks)) (map #(-> [%1 %2]) weeks roster) roster]
       (let [wk (first wks)
             pout (fn [name] (available? name unavailables wk))
-            [nxt newpool] (pop-out pout pool)]
-       (recur (vec-conj newpool nxt) (rest wks) (conj roster nxt))))))
+            [nxt newpool] (pop-out pout pool)
+            poolcheck (if (= nxt "Whoever is here")
+                        newpool
+                        (vec-conj newpool nxt))]
+       (recur poolcheck (rest wks) (conj roster nxt))))))
 
 (defn input-intro
 "Given a first name string, generate a header and instructions for the input
