@@ -1,6 +1,6 @@
 ;;Yet another way to schedule, this time using the network
 ;;flow libraries in spork.cljgraph.
-(ns scheduler.net
+(ns scheduljure.net
   (:require [spork.cljgraph.flow :as flow]))
 
 ;1) Vector of names ["Rick" "Tom" "Craig"]

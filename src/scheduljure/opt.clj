@@ -93,18 +93,19 @@
 
 ;;Dumb stochastic hill-climber that only accepts improving
 ;;solutions.
+
 (defn schedule!
   [nms uns wks & {:keys [max-it max-time]
                   :or {max-it 10000}}]
   (let [wk->choices #(choices names uns %)]
     (loop [idx      0
-           sol      (random-solution names uns wks)
+           sol      (random-solution nms uns wks)
            solcost  (cost sol)]
       (if (or (zero? solcost)
               (>= idx max-it))
           {:cost solcost :sol sol}
-          (let [nxt     (flip! s wk->choices)
-                cnext   (cost    nxt)
+          (let [nxt     (flip! sol wk->choices)
+                cnext   (cost    nxt) ;;would like to compute cost with last roster, too
                 accept? (< cnext solcost)]       
             (recur (unchecked-inc  idx)
                    (if accept? nxt sol)
