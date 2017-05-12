@@ -38,9 +38,16 @@
 
 (def unavailables {"04-10-2017" #{"Rick"}
                    "04-17-2017" #{"Rick" "Craig"}})
+
+(def us {"04-10-2017" #{"Rick"}
+                   "04-17-2017" #{"Rick" "Craig" "Tom"}})
+
 (def weeks ["04-03-2017" "04-10-2017" "04-17-2017" "04-24-2017"])
 
 (def week->idx (into {} (map-indexed #(vector %2 %1) weeks)))
+(def idx->week (into {} (map-indexed #(vector %1 %2) weeks)))
+
+
 (def availability (into {} (for [[w s] unavailables]
                              [(week->idx w) s])))
 
@@ -50,7 +57,10 @@
 (defn choices
   [names uns wk]
   (if-let [invalid (get uns wk)]
-    (filter (complement invalid) names)
+    (let [nms (filter (complement invalid) names)]
+      (if (empty? nms)
+        ["Whoever is here"]
+        nms))
     names))
 
 ;;Bad weeks for a user's schedule are weeks in which
@@ -59,12 +69,13 @@
 ;;measured by the square of the distance of the
 ;;week-index-difference from the goal of 4.  So,
 ;;"adjacent" i.e. closer weeks are punished more.
+(def ^:dynamic *num-people* 4)
 (defn bad-weeks [xs]
   (->> xs
        (reduce (fn [[acc p] n]                 
                  (if-let [res (and p (- n p))]
-                   (if (< res 4)
-                     [(+ acc (Math/pow (- 4 res) 2)) n]
+                   (if (< res *num-people*)
+                     [(+ acc (Math/pow (- *num-people* res) 2)) n]
                      [acc n])
                    [acc n])) [0 nil])
        (first)))
@@ -75,7 +86,9 @@
 (defn cost  [s]
   (->> (indexed-samples s)
        (reduce-kv (fn [acc nm wks]
-                    (+ acc (bad-weeks wks))) 0)))
+                    (if (= nm "Whoever is here")
+                      acc
+                      (+ acc (bad-weeks wks)))) 0)))
 
 ;;We dumbly alter our solution by picking a random week
 ;;and altering the decision according to our constraints.
@@ -89,27 +102,28 @@
 (defn random-solution [names uns wks]
   (->> (count wks)
        (range)
-       (mapv (comp rand-nth #(choices names uns %)))))
+       (mapv (comp rand-nth #(choices names uns (idx->week %))))))
 
 ;;Dumb stochastic hill-climber that only accepts improving
 ;;solutions.
 
 (defn schedule!
-  [nms uns wks & {:keys [max-it max-time]
-                  :or {max-it 10000}}]
-  (let [wk->choices #(choices names uns %)]
-    (loop [idx      0
-           sol      (random-solution nms uns wks)
-           solcost  (cost sol)]
-      (if (or (zero? solcost)
-              (>= idx max-it))
-          {:cost solcost :sol sol}
-          (let [nxt     (flip! sol wk->choices)
-                cnext   (cost    nxt) ;;would like to compute cost with last roster, too
-                accept? (< cnext solcost)]       
-            (recur (unchecked-inc  idx)
-                   (if accept? nxt sol)
-                   (if accept? cnext solcost)))))))
+  [nms uns wks & {:keys [max-it max-time prev-rost]
+                  :or {max-it 10000 prev-rost []}}]
+  (binding [*num-people* (count nms)]
+   (let [wk->choices #(choices nms uns (idx->week %))]
+     (loop [idx      0
+            sol      (random-solution nms uns wks)
+            solcost  (cost (concat prev-rost sol))]
+       (if (or (zero? solcost)
+               (>= idx max-it))
+         {:cost solcost :sol sol}
+         (let [nxt     (flip! sol wk->choices)
+               cnext   (cost    (concat prev-rost nxt)) ;;would like to compute cost with last roster, too
+               accept? (< cnext solcost)]       
+           (recur (unchecked-inc  idx)
+                  (if accept? nxt sol)
+                  (if accept? cnext solcost))))))))
 
 ;;Exercise for the reader:
 ;;Do it using simulated annealing :)
