@@ -10,14 +10,15 @@
             [clojure.java.io :as io]))
 
 ;;todo 1: function to make a new roster from scratch without depending
-;;on inputs from last roster.  I think these inputs would be: names.txt, which week to start
-;;(make sure it's a Monday)-generates weeks.txt first, call make-inputs for input files,
+;;on inputs from last roster.  I think these inputs would be:
+;;names.txt, which week to start (make sure it's a Monday)-generates
+;;weeks.txt first, call make-inputs for input files,
 ;;
 ;;todo 2: make uberjar file for non-Clojurfied user
 
-;1) Vector of names ["Rick" "Tom" "Craig"]
-;2) Map of unavailable days {"04/19/17" #{"Rick"} "04/26/17" #{"Rick" "Craig"}}
-;3) Weeks ["04/12/17" "04/19/17" "04/26/17"]
+;1) Vector of names ["Rick" "Tom" "Craig"] 2) Map of unavailable days
+;{"04/19/17" #{"Rick"} "04/26/17" #{"Rick" "Craig"}} 3) Weeks
+;["04/12/17" "04/19/17" "04/26/17"]
 
 ;Outputs:
 ;1) New stack ["Craig" "Rick" "Tom"]
@@ -102,9 +103,9 @@
 
 ;return the stack, weeks, roster
 (defn make-roster
-"Takes a sequence of names stacked in order of precedence for
-the schedule, a sequence of start days for each week, and a 
-map of start days to sets of unavailable names for each week. "
+  "Takes a sequence of names stacked in order of precedence for
+  the schedule, a sequence of start days for each week, and a 
+  map of start days to sets of unavailable names for each week. "
   [names weeks unavailables]
   (loop [pool names
          wks weeks
@@ -117,7 +118,7 @@ map of start days to sets of unavailable names for each week. "
             poolcheck (if (= nxt "Whoever is here")
                         newpool
                         (vec-conj newpool nxt))]
-       (recur poolcheck (rest wks) (conj roster nxt))))))
+        (recur poolcheck (rest wks) (conj roster nxt))))))
 
 (defn input-intro
   "Given a first name string, generate a header and instructions for
