@@ -78,23 +78,29 @@
 
 (def ^:dynamic numonths 3)
 
+(defn first-day-of-month
+  "Given a DateTime instance, return the first day of the month at 0000 hours"
+  [jdate]
+  (t/date-time (t/year jdate) (t/month jdate)))
+
 (defn new-weeks
   "Given a start date, returns a sequence of dates every seven days
    for numonths."
   [jstartdate]
   (let [
         firstmonth  (t/plus jstartdate (t/weeks 1))
-        lastmonth (last-month firstmonth numonths)
-        pred (fn [jdate] (<= (t/month jdate) lastmonth))
+        lastmonth (t/plus firstmonth (t/months (- numonths 1)))                                      
+        upper-bound (first-day-of-month (t/plus lastmonth (t/months 1)))
+        pred (fn [jdate] (t/before? jdate upper-bound))
         wks  (take-while pred (p/periodic-seq jstartdate (t/weeks 1)))]
     (if (include-week? (last wks))
-       (map jdate->mydate wks)
+       (vec (map jdate->mydate wks))
       (pop (vec (map jdate->mydate wks))))
     ))
 
 (defn new-weeks-from
   [mydate]
-  (new-weeks  (t/plus  (mydate->jdate mydate) (t/weeks 1))))
+   (new-weeks  (t/plus  (mydate->jdate mydate) (t/weeks 1))))
 
 (defn vec-conj
   "Conj onto the end of a sequence."
@@ -111,7 +117,7 @@
          wks weeks
          roster []]
     (if (empty? wks)
-      [pool  (new-weeks-from (last weeks)) (map #(-> [%1 %2]) weeks roster) roster]
+       [pool (new-weeks-from (last weeks)) (map #(-> [%1 %2]) weeks roster) roster]
       (let [wk (first wks)
             pout (fn [name] (available? name unavailables wk))
             [nxt newpool] (pop-out pout pool)
@@ -162,6 +168,16 @@ excluding federal holidays) or go home for the day before 1400.
     (spit (str root "\\" (str/replace n " " "") ".txt")
           (reduce (fn [curr wk] (str curr "\r\n[] " wk))
                   (input-intro  (fullname->first n)) weeks))))
+
+(defn read-file [path]
+  (read-string (slurp path)))
+
+(defn make-inputs-from
+  "Useful for making inputs after editing names.txt and/or weeks.txt"
+  [root]
+  (make-inputs (read-file (str root "\\" "names.txt"))
+               (read-file (str root "\\" "weeks.txt"))
+               root))
 
 (defn get-last-week [oldpath]
   (-> (slurp (str oldpath "\\roster.txt"))
@@ -254,9 +270,6 @@ excluding federal holidays) or go home for the day before 1400.
         (but-last)
         (str/join "\\")) "\\"))
 
-(defn read-file [path]
-  (read-string (slurp path)))
-
 (defn roster-email
 "generate the text for the e-mail and put the results in email.txt"
   [path]
@@ -303,3 +316,6 @@ The schedule follows below:\r\n\r\n"
         (spit-roster roster path)
         (spit (str path "email.txt") (roster-email path))
         (make-new-inputs newpath path))))
+
+
+
