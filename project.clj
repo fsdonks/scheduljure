@@ -6,6 +6,6 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [clj-time "0.13.0"]
                  [org.clojure/math.combinatorics "0.1.4"]
-                 [spork "0.2.0.2-SNAPSHOT"]]
+                 [spork "0.2.1.0-SNAPSHOT"]]
   :repl-options {:init-ns scheduljure.core})
 

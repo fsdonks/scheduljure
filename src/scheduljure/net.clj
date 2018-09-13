@@ -131,19 +131,19 @@
                               1 "Twice"
                               2 "Thrice"
                               3 "Fourthington"))]
-              [[name amt 0 1]
-               [amt mnode (* c c) 1]]))))
+              [[name amt (* c c) 9999]
+               [amt mnode 0 1]]))))
   ([name mnode] (amount-nodes name mnode 4)))
   
 ;;Let's build the network!
-(defn month-arcs [names months ws available?]
+(defn month-arcs [names month-weeks available?]
   (->> (for [n     names
-             month months]
+             [month ws] month-weeks]
          (let [mnode (str n "-in-" month)]
            (into (amount-nodes n mnode)
-                 (for [w     ws
-                       :when (available? n w)]
-                   [mnode w 0 1]))))
+             (for [w     ws
+                   :when (available? n w)]
+               [mnode w 0 1]))))
        (apply concat)))
 
 ;;note: due to some peculiarities in using a treeset
@@ -155,16 +155,17 @@
 ;;node-labels, which is what was happening.
 ;;Looking into fixing this going forward (minor
 ;;annoyance).
-(defn network-arcs [names weeks availables]
-  (let [months (mapv #(str "Month" %)
-                     (range (count (partition-all 4 weeks))))
+(defn network-arcs [names weeks unavailables]
+  (let [month-weeks (partition-all 4 weeks)
+        months (mapv #(str "Month" %)
+                     (range (count month-weeks)))
         available? (fn [person week]
                      (not (when-let [res (get unavailables week)]
                             (res person))))]
-    (concat (month-arcs names months weeks available?)
-            (for [n names] ["s" n 0 9999])
-            (for [w weeks] [w "t" 0 1])
-            )))
+    (concat (month-arcs names (map vector months month-weeks) available?)
+      (for [n names] ["s" n 0 9999])
+      (for [w weeks] [w "t" 0 1]))))
+            
 
 (defn build-net [names weeks availability]
   (->> (network-arcs names weeks availability)
@@ -187,9 +188,114 @@
           :when (week? w)]
       [w (parent-of-parent person-in-month)])))
 
+
+;;another formulation that may be better:
+;;The flaw in the original formulation is that we can end up with
+;;arbitrary sucker cycles: If we have fewer people than
+;;weeks in a month, one person will pull more than 1
+;;shift per month, and there's nothing preventing
+;;this from repeating throughout the solution.
+
+;;We can reformulate to capture the cost of flow
+;;as the delay between assignments.
+;;More delay -> cheaper flow.
+
+;;For each p names
+;;for from in (p,from)
+;;    to   in (p,to)
+;;    forall from in weeks
+;;           to in weeks, where to > from
+;;cost[(p, from) (p,to)] = (to - from)^2
+;;capacity[(p,from),total] = 1
+;;capacity(s, p) = inf
+;;cost(s,p) = 0
+;;for each p in names
+;;    for each w in weeks
+;;capacity[(p, (p,w))] = 1
+;;cost    [(p, (p,w))] = 0
+
+;;note: due to some peculiarities in using a treeset
+;;for the most recent priority q implementation,
+;;we have to ensure that both node-weights and
+;;node-labels are comparable, i.e. can be inputs
+;;for (compare ...).  That is, we currently
+;;can't mix-and-match keywords and strings for
+;;node-labels, which is what was happening.
+;;Looking into fixing this going forward (minor
+;;annoyance).
+(defn weekly-arcs [names weeks unavailables]
+  (let [available? (fn [nm week]
+                     (not (when-let [res (get unavailables week)]
+                            (res nm))))
+        tmax (reduce max weeks)]
+    (apply concat
+      (for [n names]
+        (let [aweeks (filter #(available? n %) weeks)]        
+          (for [l aweeks
+                r (rest aweeks)
+                :when (> r l)]
+            (let [from (str n "-" l)
+                  to   (str n "-" r)
+                  cost (- tmax (- r l))]
+              [from to cost 1])))))))
+
+(defn network-arcs2 [names weeks unavailables]
+  (let [warks  (weekly-arcs names weeks unavailables)
+        nodes  (reduce (fn [acc [l r & rest]] 
+                         (conj acc l r)) #{} warks)
+        tfinal (reduce max weeks)
+        k      (count names)]
+    (concat
+      (for [n nodes]
+        ["s" n 0 1])
+      warks
+      (for [n nodes]
+        [n "total" 9999 1])
+      [["total" "t" 0 k]])))
+
+(defn build-net2 [names weeks availability]
+  (->> (network-arcs2 names weeks availability)
+       (flow/conj-cap-arcs flow/empty-network)))
+      
+(defn compute-flow2 [names weeks availability]
+  (let [net (build-net2 names weeks availability)
+        res (-> net
+                (flow/mincost-flow "s" "t")
+                :active)]
+    res))
+    
+    
+
 ;;scheduljure.net> (sort-by first (compute-flow names weeks unavailables))
 ;;(["04-03-2017" "Rick"] ["04-10-2017" "Craig"] ["04-17-2017" "Tom"] ["04-24-2017" "Rick"])
-    
+
+(comment
+  (sort-by first     (compute-flow names weeks unavailables))
+  (def lots-of-weeks (mapv str (range 100)))
+  (defn random-unavailables [nms wks] 
+    (->> (for [i wks]
+           [i (when-let [res (seq (for [n nms          
+                                        :when (> (rand) 0.98)]
+                                    n))]
+                (set res))])
+         (filter (comp seq second))
+         (into {})))
+  
+  (def lots-of-unavailables 
+    (random-unavailables names lots-of-weeks))
+  
+  (defn verify [unavailables weekly-assignments]
+    (filter identity
+      (for [[w nm] weekly-assignments]
+        (when-let [un (unavailables w)]
+          (when (un nm)
+            {:invalid! [w nm]})))))
+  
+  (def res  
+    (->> (compute-flow names 
+               lots-of-weeks
+               lots-of-unavailables)
+         (sort-by (comp clojure.edn/read-string first)))))  
             
             
       

@@ -105,8 +105,8 @@
        (mapv (comp rand-nth #(choices names uns (idx->week %))))))
 
 ;;Dumb stochastic hill-climber that only accepts improving
-;;solutions.
-
+;;solutions.  This will get stuck in local optimum pretty
+;;easily...
 (defn schedule!
   [nms uns wks & {:keys [max-it max-time prev-rost]
                   :or {max-it 10000 prev-rost []}}]
@@ -125,5 +125,27 @@
                   (if accept? nxt sol)
                   (if accept? cnext solcost))))))))
 
+
+;;example
+(comment
+  (schedule! names unavailables weeks)
+  (def lots-of-weeks (range 100))
+  (defn random-unavailables [nm wks] 
+    {nm (vec
+          (for [i wks
+                :when (> (rand) 0.98)]
+            i))})  
+  
+  (def lots-of-unavailables 
+    (into {} (map (fn [nm] 
+                    (random-unavailables nm lots-of-weeks)) names)))
+  
+  (schedule! names lots-of-unavailables lots-of-weeks)
+  ;;double the effort...
+  (schedule! names lots-of-unavailables lots-of-weeks :max-it 20000))  
+  
+
 ;;Exercise for the reader:
 ;;Do it using simulated annealing :)
+;;Do it using Genetic Algorithms
+;;Add more constraints / goals to the objective function.
